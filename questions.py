@@ -1,5 +1,5 @@
 import nltk
-import sys
+import sys, os, math, string
 
 FILE_MATCHES = 1
 SENTENCE_MATCHES = 1
@@ -85,14 +85,21 @@ def compute_idfs(documents):
     Any word that appears in at least one of the documents should be in the
     resulting dictionary.
     """
-    countDocs = {}
-    for doc, text in documents.items():
-        for word in text:
-            if word in countDocs:
-                countDocs[word].add(doc)
+    # initialize dict to hold counter
+    count_words = {}
+    # iterate through each document
+    for doc in documents:
+        # iterate through each unique word in doc
+        for word in set(documents[doc]):
+            # increment counter to show word found in doc
+            if word in count_words:
+                count_words[word] += 1
             else:
-                countDocs[word] = set(doc)
-    return {word: math.log(float(len(documents)) / len(countDocs[word])) for word in countDocs}
+                count_words[word] = 0
+    # define idf calcuation function for a word in count_words
+    idf_calc = lambda x: math.log(float(len(documents) / len(count_words[x])))
+    idf = {word: idf_calc(word) for word in count_words
+    return idf
 
 
 def top_files(query, files, idfs, n):
@@ -102,14 +109,20 @@ def top_files(query, files, idfs, n):
     to their IDF values), return a list of the filenames of the the `n` top
     files that match the query, ranked according to tf-idf.
     """
+    # initialize dict to collect sums
+    tfidf_sums = {}
     # iterate over files
-    for filename, wordlist in files.items():
+    for filename in files:
         # collect partial sums for each query word
-        idfs_sums[filename] = 0
+        tfidf_sums[filename] = 0
         for qword in query:
             # add in count of qword in file times idfs
-            idfs_sums[filename] += wordlist.count(qword) * idfs[qword]
-    return sorted(idfs_sums, key=lambda x: idfs_sums[x], reverse=True)[:n]
+            # note that no guarantee there's an idfs entry for query word
+            try:
+                tfidf_sums[filename] += wordlist.count(qword) * idfs[qword]
+            except KeyError:
+                pass
+    return sorted(tfidf_sums, key=lambda x: tfidf_sums[x], reverse=True)[:n]
 
 
 def top_sentences(query, sentences, idfs, n):
@@ -120,18 +133,24 @@ def top_sentences(query, sentences, idfs, n):
     the query, ranked according to idf. If there are ties, preference should
     be given to sentences that have a higher query term density.
     """
+    # initialize dict to collect sums
+    idfs_sums = {}
+    density_sums = {}
     # iterate over sentences
-    for sentence in sentences:
-        # collect partial density and idfs sums for each query word
-        idfs_sums[sentence] = 0
-        density_sums[sentence] = 0
+    for sentence, senwords in sentences.items():
+        idfs_sums[sentence] = 0.0
+        density_sums[sentence] = 0.0
         for qword in query:
-            # add in count of qword in file times idfs
-            idfs_sums[sentence] += idfs[qword]
-            density_sums[sentence] += 1.0 / len(sentence)
+            count = float(senwords.count(qword))
+            density_sums[sentence] += count / len(senwords)
+            try:
+                idfs_sums[sentence] += idfs[qword]
+            except KeyError:
+                pass
     # return sorted primary by idfs secondary by density
-    return sorted(sorted(sums, key=lambda x: density_sums[x], reverse=True),
-                  key=lambda x: idfs_sums[x], reverse=True)[:n]
+    returnVal = sorted(idfs_sums, key=lambda x: density_sums[x], reverse=True)
+    returnVal = sorted(returnVal, key=lambda x: idfs_sums[x], reverse=True)[:n]
+    return returnVal
     
 
 if __name__ == "__main__":
