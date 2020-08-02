@@ -1,5 +1,8 @@
 import nltk
-import sys, os, math, string
+import sys
+import os
+import math
+import string
 
 FILE_MATCHES = 1
 SENTENCE_MATCHES = 1
@@ -100,8 +103,11 @@ def compute_idfs(documents):
                 count_words[word] += 1
             else:
                 count_words[word] = 1
+
     # define idf calcuation function for a word in count_words
-    idf_calc = lambda x: math.log(float(len(documents)) / count_words[x])
+    def idf_calc(x):
+        return math.log(float(len(documents)) / count_words[x])
+        
     idf = {word: idf_calc(word) for word in count_words}
     return idf
 
